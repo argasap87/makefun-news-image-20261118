@@ -24,7 +24,7 @@
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const OUTPUT_DIR = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
@@ -32,6 +32,14 @@ const IMAGE_PATH = new URL('./entry.png', import.meta.url);
 
 const bytes = readFileSync(IMAGE_PATH);
 mkdirSync(OUTPUT_DIR, { recursive: true });
-writeFileSync(join(OUTPUT_DIR, 'entry.png'), bytes);
+const outPath = join(OUTPUT_DIR, 'entry.png');
+writeFileSync(outPath, bytes);
+// Fail loudly if the copy came out short, so a truncated image never
+// reaches the gate: the gate scores exactly the bytes in /output/entry.png.
+const { size } = statSync(outPath);
+if (size !== bytes.length) {
+  throw new Error(`entry.png copy is ${size} bytes, expected ${bytes.length}`);
+}
+console.log(`wrote ${outPath} (${size} bytes)`);
 // Verified locally before submitting: the output is byte-identical to
 // entry.png (92,315 bytes), so the gate sees exactly the checked image.
